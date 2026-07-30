@@ -487,8 +487,12 @@ function friendlyFetchError(err) {
     return 'That domain could not be found. Check the URL and try again.';
   } else if (err.response) {
     return `The site responded with status ${err.response.status}.`;
+  } else if (err.name === 'TimeoutError') {
+    return 'The page took too long to load while rendering JavaScript.';
+  } else if (err.message && err.message.includes('playwright install')) {
+    return err.message;
   }
-  return 'Could not reach that URL.';
+  return `Could not reach that URL${err.message ? ' (' + err.message + ')' : ''}.`;
 }
 
 app.post('/scrape', async (req, res) => {
