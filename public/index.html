@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Extract — turn any website into structured data</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body>
+
+<div class="bg-aurora" aria-hidden="true">
+  <div class="blob blob-1"></div>
+  <div class="blob blob-2"></div>
+  <div class="blob blob-3"></div>
+</div>
+<div class="bg-grid" aria-hidden="true"></div>
+
+<header class="topbar">
+  <div class="brand"><span class="brand-mark">⌁</span> Extract</div>
+  <button class="icon-btn" id="history-toggle">🕘 History</button>
+</header>
+
+<section class="hero">
+  <div class="hero-inner">
+    <div class="eyebrow">WEB DATA EXTRACTION TOOL</div>
+    <h1 class="hero-title">Turn any website<br><span class="gradient-text">into structured data.</span></h1>
+    <p class="hero-sub">Paste a URL — get its title, headings, links, images, and contacts back as clean, exportable data. Scrape one page, crawl a whole site, or run a batch of URLs at once.</p>
+
+    <div class="mode-tabs" role="tablist">
+      <button type="button" class="mode-tab active" data-mode="single">Single Page</button>
+      <button type="button" class="mode-tab" data-mode="crawl">Crawl Site</button>
+      <button type="button" class="mode-tab" data-mode="batch">Batch URLs</button>
+    </div>
+
+    <form id="scrape-form" class="scan-form" autocomplete="off">
+      <div class="input-panel" id="input-panel-url">
+        <div class="scan-input-wrap">
+          <span class="scan-input-icon">🔗</span>
+          <input type="text" id="url-input" class="scan-input" placeholder="example.com/some-page" />
+        </div>
+        <div class="max-pages-wrap" id="max-pages-wrap" hidden>
+          <label for="max-pages-input">Max pages</label>
+          <input type="number" id="max-pages-input" min="1" max="30" value="12" />
+        </div>
+      </div>
+
+      <textarea id="batch-input" class="batch-textarea" hidden placeholder="One URL per line, e.g.&#10;example.com/page-1&#10;example.com/page-2&#10;example.com/page-3"></textarea>
+
+      <label class="render-js-row" for="render-js-checkbox">
+        <input type="checkbox" id="render-js-checkbox" />
+        <span>Render JavaScript <span class="render-js-hint">— slower, needed for JS-heavy sites like Coursera's course browser</span></span>
+      </label>
+
+      <button type="submit" class="scan-button" id="scan-button">
+        <span id="scan-button-label">Extract</span> <span>→</span>
+      </button>
+    </form>
+  </div>
+</section>
+
+<main class="results-wrap" id="results-wrap">
+
+  <div class="progress-panel" id="progress-panel" hidden>
+    <div class="progress-head">
+      <span id="progress-label">Crawling…</span>
+      <span id="progress-count">0 / 0</span>
+    </div>
+    <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+    <ul class="progress-live-list" id="progress-live-list"></ul>
+  </div>
+
+  <div class="status-line" id="status-line" hidden>
+    <span id="status-text">Ready.</span>
+    <button type="button" class="mini-btn export-all-btn" id="export-all-btn" hidden>⤓ Export full report (.xlsx)</button>
+  </div>
+
+  <section class="results-grid" id="results-grid" hidden>
+
+    <article class="panel panel-wide" id="panel-overview">
+      <div class="panel-tag"><span class="panel-tag-label"><span class="panel-tag-icon">◆</span> OVERVIEW</span></div>
+      <h2 class="panel-title" id="ov-title">—</h2>
+      <p class="panel-desc" id="ov-desc">—</p>
+      <dl class="meta-list">
+        <div><dt>Final URL</dt><dd id="ov-url">—</dd></div>
+        <div><dt>Status</dt><dd id="ov-status">—</dd></div>
+        <div><dt>Language</dt><dd id="ov-lang">—</dd></div>
+        <div><dt>Fetched in</dt><dd id="ov-time">—</dd></div>
+      </dl>
+    </article>
+
+    <article class="panel panel-wide" id="panel-pages" hidden>
+      <div class="panel-tag">
+        <span class="panel-tag-label"><span class="panel-tag-icon">▤</span> PAGES <span class="count" id="count-pages">0</span></span>
+        <div class="panel-actions">
+          <button type="button" class="mini-btn" data-export="pages" data-format="csv">CSV</button>
+          <button type="button" class="mini-btn" data-export="pages" data-format="json">JSON</button>
+          <button type="button" class="mini-btn" data-export="pages" data-format="xlsx">XLSX</button>
+        </div>
+      </div>
+      <p class="panel-desc" id="pages-summary">—</p>
+      <ul class="data-list scroll-list" id="list-pages"></ul>
+    </article>
+
+    <article class="panel panel-wide" id="panel-sitemap" hidden>
+      <div class="panel-tag">
+        <span class="panel-tag-label"><span class="panel-tag-icon">◈</span> SITE MAP</span>
+      </div>
+      <div class="sitemap-wrap" id="sitemap-wrap"></div>
+    </article>
+
+    <article class="panel panel-wide" id="panel-listings" hidden>
+      <div class="panel-tag">
+        <span class="panel-tag-label"><span class="panel-tag-icon">▥</span> LISTINGS <span class="count" id="count-listings">0</span></span>
+        <div class="panel-actions">
+          <button type="button" class="mini-btn" data-export="listings" data-format="csv">CSV</button>
+          <button type="button" class="mini-btn" data-export="listings" data-format="json">JSON</button>
+          <button type="button" class="mini-btn" data-export="listings" data-format="xlsx">XLSX</button>
+        </div>
+      </div>
+      <p class="panel-desc">Repeated card-style items detected on the page — courses, products, job posts, articles, and similar listings.</p>
+      <input type="text" class="filter-input" id="filter-listings" placeholder="Filter listings…" />
+      <div class="listings-table-wrap">
+        <table class="listings-table" id="listings-table">
+          <thead><tr><th>Title</th><th>Price</th><th>Rating</th><th>Description</th></tr></thead>
+          <tbody id="list-listings"></tbody>
+        </table>
+      </div>
+    </article>
+
+    <article class="panel" id="panel-headings">
+      <div class="panel-tag">
+        <span class="panel-tag-label"><span class="panel-tag-icon">Ⓗ</span> HEADINGS <span class="count" id="count-headings">0</span></span>
+        <div class="panel-actions">
+          <button type="button" class="mini-btn" data-export="headings" data-format="csv">CSV</button>
+          <button type="button" class="mini-btn" data-export="headings" data-format="json">JSON</button>
+          <button type="button" class="mini-btn" data-export="headings" data-format="xlsx">XLSX</button>
+        </div>
+      </div>
+      <input type="text" class="filter-input" id="filter-headings" placeholder="Filter headings…" />
+      <ul class="data-list" id="list-headings"></ul>
+    </article>
+
+    <article class="panel" id="panel-links">
+      <div class="panel-tag">
+        <span class="panel-tag-label"><span class="panel-tag-icon">⛓</span> LINKS <span class="count" id="count-links">0</span></span>
+        <div class="panel-actions">
+          <button type="button" class="mini-btn" data-export="links" data-format="csv">CSV</button>
+          <button type="button" class="mini-btn" data-export="links" data-format="json">JSON</button>
+          <button type="button" class="mini-btn" data-export="links" data-format="xlsx">XLSX</button>
+        </div>
+      </div>
+      <input type="text" class="filter-input" id="filter-links" placeholder="Filter links…" />
+      <ul class="data-list scroll-list" id="list-links"></ul>
+    </article>
+
+    <article class="panel" id="panel-images">
+      <div class="panel-tag">
+        <span class="panel-tag-label"><span class="panel-tag-icon">▧</span> IMAGES <span class="count" id="count-images">0</span></span>
+        <div class="panel-actions">
+          <button type="button" class="mini-btn" data-export="images" data-format="csv">CSV</button>
+          <button type="button" class="mini-btn" data-export="images" data-format="json">JSON</button>
+          <button type="button" class="mini-btn" data-export="images" data-format="xlsx">XLSX</button>
+        </div>
+      </div>
+      <input type="text" class="filter-input" id="filter-images" placeholder="Filter images by alt text…" />
+      <div class="image-grid" id="list-images"></div>
+    </article>
+
+    <article class="panel" id="panel-contacts">
+      <div class="panel-tag">
+        <span class="panel-tag-label"><span class="panel-tag-icon">☺</span> CONTACTS <span class="count" id="count-contacts">0</span></span>
+        <div class="panel-actions">
+          <button type="button" class="mini-btn" data-export="contacts" data-format="csv">CSV</button>
+          <button type="button" class="mini-btn" data-export="contacts" data-format="json">JSON</button>
+          <button type="button" class="mini-btn" data-export="contacts" data-format="xlsx">XLSX</button>
+        </div>
+      </div>
+      <input type="text" class="filter-input" id="filter-contacts" placeholder="Filter contacts…" />
+      <ul class="data-list scroll-list" id="list-contacts"></ul>
+    </article>
+
+    <article class="panel panel-wide" id="panel-text">
+      <div class="panel-tag"><span class="panel-tag-label"><span class="panel-tag-icon">¶</span> BODY TEXT <span class="count" id="count-words">0 words</span></span></div>
+      <p class="excerpt" id="excerpt-text">—</p>
+    </article>
+
+  </section>
+</main>
+
+<div class="history-scrim" id="history-scrim"></div>
+<aside class="history-drawer" id="history-drawer">
+  <div class="history-drawer-header">
+    <span>History</span>
+    <button class="history-close-btn" id="history-close">✕</button>
+  </div>
+  <ul class="history-list" id="history-list"></ul>
+</aside>
+
+<footer class="foot">
+  <p>Works on public pages only. Some sites block automated requests or require you to be logged in — those won't come through. History is stored only in this browser.</p>
+</footer>
+
+<script src="script.js"></script>
+</body>
+</html>
