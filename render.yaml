@@ -1,10 +1,6 @@
 services:
   - type: web
     name: extract-web-scraper
-    env: node
+    env: docker
     plan: free
-    buildCommand: npm install && npx playwright install --with-deps chromium
-    startCommand: npm start
-    envVars:
-      - key: NODE_VERSION
-        value: 20
+    dockerfilePath: ./Dockerfile
